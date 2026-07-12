@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kwilua - Private voice typing for Mac</title>
+<meta name="description" content="Hold a key, speak in English or Spanish, release. Polished text appears where you type. Everything runs on your computer.">
+<style>
+  :root {
+    --bg: #0e1113;
+    --panel: #171c1f;
+    --text: #e8ecee;
+    --muted: #9aa7ad;
+    --accent: #34c3a2;
+    --accent-dark: #228f77;
+    --border: #242c30;
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #fafcfc;
+      --panel: #ffffff;
+      --text: #14201f;
+      --muted: #5b6b6e;
+      --border: #e3eaea;
+    }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 0;
+  }
+  .logo { font-size: 20px; font-weight: 700; color: var(--text); letter-spacing: 0.3px; }
+  .logo span { color: var(--accent); }
+  nav a { color: var(--muted); margin-left: 20px; font-size: 14px; }
+  nav a:hover { color: var(--text); }
+  .lang-toggle {
+    margin-left: 20px; background: var(--panel); border: 1px solid var(--border);
+    color: var(--text); border-radius: 8px; padding: 4px 10px; font-size: 13px; cursor: pointer;
+  }
+
+  .hero { text-align: center; padding: 72px 0 48px; }
+  .hero h1 { font-size: clamp(32px, 6vw, 54px); line-height: 1.15; letter-spacing: -0.5px; }
+  .hero h1 em { font-style: normal; color: var(--accent); }
+  .hero p.sub { color: var(--muted); font-size: 19px; max-width: 620px; margin: 20px auto 0; }
+  .cta-row { margin-top: 32px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-block; padding: 12px 22px; border-radius: 10px; font-weight: 600; font-size: 15px;
+    border: 1px solid var(--border); color: var(--text); background: var(--panel);
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #08211b; }
+  .btn.disabled { opacity: 0.55; cursor: default; }
+  .fineprint { color: var(--muted); font-size: 13px; margin-top: 14px; }
+
+  .pill-demo {
+    /* Fixed width: the pill must never resize while the demo types, that
+       reads as a pulsing heartbeat. */
+    margin: 48px auto 0; width: min(560px, calc(100vw - 48px)); height: 48px;
+    display: flex; align-items: center; gap: 10px; justify-content: flex-start;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 999px;
+    padding: 0 22px; box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+  }
+  .pill-demo .typed { overflow: hidden; white-space: nowrap; }
+  @media (prefers-reduced-motion: reduce) {
+    .bars i { animation: none; }
+  }
+  .bars { display: flex; gap: 3px; align-items: center; height: 22px; }
+  .bars i {
+    width: 3px; border-radius: 2px; background: var(--accent); display: block;
+    animation: bounce 1.1s ease-in-out infinite;
+  }
+  .bars i:nth-child(1) { height: 8px; animation-delay: 0s; }
+  .bars i:nth-child(2) { height: 14px; animation-delay: .15s; }
+  .bars i:nth-child(3) { height: 20px; animation-delay: .3s; }
+  .bars i:nth-child(4) { height: 14px; animation-delay: .45s; }
+  .bars i:nth-child(5) { height: 8px; animation-delay: .6s; }
+  @keyframes bounce { 0%,100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
+  .pill-demo .typed { font-size: 15px; color: var(--muted); }
+  .pill-demo .typed b { color: var(--text); font-weight: 500; }
+
+  section { padding: 56px 0; border-top: 1px solid var(--border); }
+  h2 { font-size: 28px; margin-bottom: 8px; letter-spacing: -0.3px; }
+  .lead { color: var(--muted); max-width: 640px; }
+
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 32px; }
+  .step { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; }
+  .step .num { color: var(--accent); font-weight: 700; font-size: 13px; letter-spacing: 1px; }
+  .step h3 { font-size: 17px; margin: 8px 0 6px; }
+  .step p { color: var(--muted); font-size: 14.5px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 32px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; }
+  .card h3 { font-size: 16px; margin-bottom: 6px; }
+  .card p { color: var(--muted); font-size: 14.5px; }
+
+  .privacy-claim {
+    margin-top: 28px; padding: 26px; border-radius: var(--radius);
+    background: linear-gradient(135deg, rgba(52,195,162,0.12), rgba(52,195,162,0.04));
+    border: 1px solid rgba(52,195,162,0.35);
+  }
+  .privacy-claim strong { font-size: 19px; }
+  .privacy-claim p { color: var(--muted); margin-top: 8px; font-size: 15px; }
+
+  .tiers { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 32px; }
+  .tier { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 26px; display: flex; flex-direction: column; }
+  .tier.featured { border-color: var(--accent); }
+  .tier h3 { font-size: 18px; }
+  .tier .price { font-size: 30px; font-weight: 700; margin: 10px 0 2px; }
+  .tier .per { color: var(--muted); font-size: 13px; }
+  .tier ul { list-style: none; margin: 18px 0 0; flex: 1; }
+  .tier li { padding: 5px 0 5px 22px; position: relative; color: var(--muted); font-size: 14.5px; }
+  .tier li::before { content: "✓"; position: absolute; left: 0; color: var(--accent); }
+  .tier .tag { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--accent); }
+
+  .heritage { text-align: center; }
+  .heritage p { max-width: 640px; margin: 12px auto 0; color: var(--muted); }
+  .heritage .word { font-size: 26px; font-weight: 600; letter-spacing: 0.5px; margin-top: 18px; }
+  .heritage .word span { color: var(--accent); }
+
+  footer { border-top: 1px solid var(--border); padding: 32px 0 48px; color: var(--muted); font-size: 13.5px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="logo">Kwi<span>lua</span></div>
+  <nav>
+    <a href="#how" data-i18n="nav_how">How it works</a>
+    <a href="#privacy" data-i18n="nav_privacy">Privacy</a>
+    <a href="#pricing" data-i18n="nav_pricing">Pricing</a>
+    <a href="#faq" data-i18n="nav_faq">FAQ</a>
+    <button class="lang-toggle" id="langToggle" aria-label="Switch language">ES</button>
+  </nav>
+</header>
+
+<div class="hero">
+  <h1 data-i18n="hero_title">Speak. <em>It writes.</em></h1>
+  <p class="sub" data-i18n="hero_sub">Hold a key, talk in English or Spanish, release. Clean, polished text appears wherever you were typing. And nothing you say ever leaves your computer.</p>
+  <div class="cta-row">
+    <a class="btn primary" href="#pricing" data-i18n="cta_mac">Download for Mac</a>
+    <span class="btn disabled" data-i18n="cta_win">Windows: in development</span>
+  </div>
+  <p class="fineprint" data-i18n="hero_fine">Free for everyday dictation. No account. No audio uploads. Ever.</p>
+
+  <div class="pill-demo" aria-hidden="true">
+    <div class="bars"><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="typed" id="typedemo"><b></b></div>
+  </div>
+</div>
+
+<section id="how">
+  <h2 data-i18n="how_title">How it works</h2>
+  <p class="lead" data-i18n="how_lead">Kwilua lives in your menu bar and works in every app: email, Slack, docs, code editors, anything with a text field.</p>
+  <div class="steps">
+    <div class="step"><div class="num">1</div><h3 data-i18n="s1_t">Hold</h3><p data-i18n="s1_p">Press and hold the Fn key from any app. A small pill shows you are live.</p></div>
+    <div class="step"><div class="num">2</div><h3 data-i18n="s2_t">Speak</h3><p data-i18n="s2_p">English or Spanish, detected automatically. Fillers, false starts and self-corrections are fine.</p></div>
+    <div class="step"><div class="num">3</div><h3 data-i18n="s3_t">Release</h3><p data-i18n="s3_p">Your words are transcribed and cleaned on your Mac, then inserted at the cursor. Instantly.</p></div>
+  </div>
+</section>
+
+<section id="features">
+  <h2 data-i18n="f_title">Built for real dictation</h2>
+  <div class="grid">
+    <div class="card"><h3 data-i18n="f1_t">English + Español</h3><p data-i18n="f1_p">Speak either language and Kwilua detects which one, accents included. Made by a bilingual founder who uses both every day.</p></div>
+    <div class="card"><h3 data-i18n="f2_t">Local Whisper transcription</h3><p data-i18n="f2_p">State-of-the-art speech recognition running entirely on Apple Silicon. No internet needed after the one-time model download.</p></div>
+    <div class="card"><h3 data-i18n="f3_t">Smart cleanup</h3><p data-i18n="f3_p">Filler words removed, punctuation and capitalization fixed, offline. Say "press enter" to send your message.</p></div>
+    <div class="card"><h3 data-i18n="f4_t">Personal dictionary</h3><p data-i18n="f4_p">Teach it your names, products and jargon so they come out spelled right. Snippets expand a spoken cue into full text.</p></div>
+    <div class="card"><h3 data-i18n="f5_t">Any microphone</h3><p data-i18n="f5_p">Built-in mic, USB, or AirPods. Kwilua follows your system default or pins the device you choose.</p></div>
+    <div class="card"><h3 data-i18n="f6_t">History</h3><p data-i18n="f6_p">Every dictation saved locally so you can copy it again. Your data, on your disk, in plain JSON.</p></div>
+  </div>
+</section>
+
+<section id="privacy">
+  <h2 data-i18n="p_title">Privacy is the product</h2>
+  <p class="lead" data-i18n="p_lead">Cloud dictation apps upload your voice to their servers. Kwilua was built so that is impossible by design.</p>
+  <div class="privacy-claim">
+    <strong data-i18n="p_claim">Nothing you say ever leaves your computer.</strong>
+    <p data-i18n="p_detail">Audio is captured, transcribed, cleaned and inserted entirely on your Mac. No account, no telemetry, no audio uploads, free or paid. The only network use is downloading the speech model once. Optional cloud features are off by default and labeled exactly as what they are, right where you would turn them on.</p>
+  </div>
+</section>
+
+<section id="meetings">
+  <h2 data-i18n="m_title">Coming to Pro: meeting notes without the bot</h2>
+  <p class="lead" data-i18n="m_lead">No "AI assistant" joining your call. Kwilua will record locally, and when the meeting ends you get two things: the full transcript, and a summary built around the moments YOU marked. Press one key at the important part; Kwilua saves the timestamp and a screenshot of what was on screen, and the summary is organized around them. All on your machine.</p>
+</section>
+
+<section id="pricing">
+  <h2 data-i18n="pr_title">Pricing</h2>
+  <p class="lead" data-i18n="pr_lead">The free tier is not a demo. It is the full dictation experience, local forever.</p>
+  <div class="tiers">
+    <div class="tier">
+      <h3 data-i18n="t1_t">Free</h3>
+      <div class="price">$0</div>
+      <div class="per" data-i18n="t1_per">forever</div>
+      <ul>
+        <li data-i18n="t1_a">Unlimited dictation, EN + ES</li>
+        <li data-i18n="t1_b">Local Whisper transcription</li>
+        <li data-i18n="t1_c">Smart offline cleanup</li>
+        <li data-i18n="t1_d">Dictionary, snippets, history</li>
+        <li data-i18n="t1_e">100% local, no account</li>
+      </ul>
+    </div>
+    <div class="tier featured">
+      <span class="tag">PRO</span>
+      <h3 data-i18n="t2_t">Pro</h3>
+      <div class="price">$7<span class="per">/mo</span></div>
+      <div class="per" data-i18n="t2_per">or $59/year</div>
+      <ul>
+        <li data-i18n="t2_a">Meeting mode: transcript + summary</li>
+        <li data-i18n="t2_b">Highlight key moments with screenshots</li>
+        <li data-i18n="t2_c">AI polish, on your machine</li>
+        <li data-i18n="t2_d">Optional cloud polish, clearly labeled</li>
+        <li data-i18n="t2_e">Still 100% local by default</li>
+      </ul>
+    </div>
+    <div class="tier">
+      <span class="tag" data-i18n="t3_tag">LIMITED AT LAUNCH</span>
+      <h3 data-i18n="t3_t">Founder</h3>
+      <div class="price">$99</div>
+      <div class="per" data-i18n="t3_per">once, forever</div>
+      <ul>
+        <li data-i18n="t3_a">Everything in Pro, for life</li>
+        <li data-i18n="t3_b">First 500 licenses only</li>
+        <li data-i18n="t3_c">Founder badge in the app</li>
+      </ul>
+    </div>
+  </div>
+  <p class="fineprint" data-i18n="pr_fine">Launch pricing, subject to change before release.</p>
+</section>
+
+<section id="faq">
+  <h2 data-i18n="q_title">Questions</h2>
+  <div class="grid">
+    <div class="card">
+      <h3 data-i18n="q1_t">What do I need to run it?</h3>
+      <p data-i18n="q1_p">A Mac with Apple Silicon (M1 or later) on macOS 14 or newer. Transcription runs on the Neural Engine, so it is fast and easy on your battery. Intel Macs are not supported.</p>
+    </div>
+    <div class="card">
+      <h3 data-i18n="q2_t">What about Windows?</h3>
+      <p data-i18n="q2_p">A Windows 10/11 (64-bit) version is in development, with the same rule: everything stays on your machine. One difference: you hold Right Ctrl instead of Fn, because on most PCs the Fn key belongs to the keyboard firmware and no app can use it.</p>
+    </div>
+    <div class="card">
+      <h3 data-i18n="q3_t">Do the speech models update?</h3>
+      <p data-i18n="q3_p">The app keeps itself up to date, and when a better speech model comes out it tells you. Big downloads always ask first, with the size shown. Nothing is fetched silently.</p>
+    </div>
+    <div class="card">
+      <h3 data-i18n="q4_t">Is my voice really never uploaded?</h3>
+      <p data-i18n="q4_p">Really. There is no server to upload it to: Kwilua has no account system and no telemetry. Audio is processed on your machine and stays there. The one optional cloud feature (Pro users can plug in their own Claude API key for higher-quality notes) sends transcript text only, never audio, is off by default, and says exactly that next to the switch.</p>
+    </div>
+  </div>
+</section>
+
+<section class="heritage">
+  <h2 data-i18n="h_title">Why "Kwilua"?</h2>
+  <div class="word">ihkwilua <span>&rarr;</span> Kwilua</div>
+  <p data-i18n="h_p">From the Nawat verb (i)hkwilua, "to write". Nawat is the language of the Pipil people of El Salvador, where our founder is from. An app that writes when you speak, named in the language of the land.</p>
+</section>
+
+<footer>
+  <span data-i18n="foot">Kwilua. Made for people who think faster than they type.</span>
+</footer>
+
+</div>
+
+<script>
+const i18n = {
+  es: {
+    nav_how: "Como funciona", nav_privacy: "Privacidad", nav_pricing: "Precios", nav_faq: "Preguntas",
+    q_title: "Preguntas",
+    q1_t: "Que necesito para usarlo?",
+    q1_p: "Una Mac con Apple Silicon (M1 o posterior) con macOS 14 o mas reciente. La transcripcion corre en el Neural Engine, asi que es rapida y cuida tu bateria. Las Mac con Intel no son compatibles.",
+    q2_t: "Y Windows?",
+    q2_p: "Una version para Windows 10/11 (64 bits) esta en desarrollo, con la misma regla: todo se queda en tu maquina. Una diferencia: mantienes Ctrl derecho en vez de Fn, porque en la mayoria de las PC la tecla Fn pertenece al firmware del teclado y ninguna app puede usarla.",
+    q3_t: "Los modelos de voz se actualizan?",
+    q3_p: "La app se mantiene actualizada sola, y cuando sale un mejor modelo de voz te avisa. Las descargas grandes siempre preguntan primero, mostrando el tamano. Nada se descarga en silencio.",
+    q4_t: "De verdad mi voz nunca se sube?",
+    q4_p: "De verdad. No hay servidor al cual subirla: Kwilua no tiene sistema de cuentas ni telemetria. El audio se procesa en tu maquina y ahi se queda. La unica funcion opcional en la nube (usuarios Pro pueden usar su propia clave de la API de Claude para notas de mayor calidad) envia solo el texto de la transcripcion, nunca el audio, viene apagada, y lo dice exactamente asi junto al interruptor.",
+    hero_title: "Habla. <em>Y se escribe.</em>",
+    hero_sub: "Manten una tecla, habla en espanol o ingles, suelta. El texto aparece limpio y pulido donde estabas escribiendo. Y nada de lo que dices sale de tu computadora.",
+    cta_mac: "Descargar para Mac", cta_win: "Windows: en desarrollo",
+    hero_fine: "Gratis para dictado diario. Sin cuenta. Sin subir audio. Nunca.",
+    how_title: "Como funciona",
+    how_lead: "Kwilua vive en tu barra de menu y funciona en todas las apps: correo, Slack, documentos, editores de codigo, cualquier campo de texto.",
+    s1_t: "Manten", s1_p: "Presiona y manten la tecla Fn desde cualquier app. Una pildora te muestra que esta grabando.",
+    s2_t: "Habla", s2_p: "Espanol o ingles, detectado automaticamente. Muletillas, pausas y correcciones no son problema.",
+    s3_t: "Suelta", s3_p: "Tus palabras se transcriben y limpian en tu Mac, y se insertan donde esta el cursor. Al instante.",
+    f_title: "Hecho para dictar de verdad",
+    f1_t: "Espanol + English", f1_p: "Habla cualquiera de los dos idiomas y Kwilua detecta cual es, con acentos incluidos. Hecho por un fundador bilingue que usa ambos todos los dias.",
+    f2_t: "Transcripcion local con Whisper", f2_p: "Reconocimiento de voz de ultima generacion corriendo por completo en Apple Silicon. Sin internet despues de la descarga unica del modelo.",
+    f3_t: "Limpieza inteligente", f3_p: "Muletillas fuera, puntuacion y mayusculas corregidas, sin conexion. Di \"presiona enter\" para enviar tu mensaje.",
+    f4_t: "Diccionario personal", f4_p: "Ensenale tus nombres, productos y jerga para que salgan bien escritos. Los snippets expanden una frase hablada en texto completo.",
+    f5_t: "Cualquier microfono", f5_p: "Microfono integrado, USB o AirPods. Kwilua sigue el predeterminado del sistema o fija el dispositivo que elijas.",
+    f6_t: "Historial", f6_p: "Cada dictado se guarda localmente para copiarlo de nuevo. Tus datos, en tu disco, en JSON plano.",
+    p_title: "La privacidad es el producto",
+    p_lead: "Las apps de dictado en la nube suben tu voz a sus servidores. Kwilua fue construido para que eso sea imposible por diseno.",
+    p_claim: "Nada de lo que dices sale de tu computadora.",
+    p_detail: "El audio se captura, transcribe, limpia e inserta por completo en tu Mac. Sin cuenta, sin telemetria, sin subir audio, gratis o de pago. El unico uso de red es descargar el modelo de voz una vez. Las funciones opcionales en la nube vienen apagadas y etiquetadas exactamente como lo que son, justo donde las activarias.",
+    m_title: "Pronto en Pro: notas de reuniones sin bot",
+    m_lead: "Sin \"asistente de IA\" entrando a tu llamada. Kwilua grabara localmente, y al terminar la reunion obtienes dos cosas: la transcripcion completa y un resumen construido alrededor de los momentos que TU marcaste. Presiona una tecla en la parte importante; Kwilua guarda el momento y una captura de lo que estaba en pantalla, y el resumen se organiza alrededor de ellos. Todo en tu maquina.",
+    pr_title: "Precios",
+    pr_lead: "El plan gratis no es una demo. Es la experiencia completa de dictado, local para siempre.",
+    t1_t: "Gratis", t1_per: "para siempre",
+    t1_a: "Dictado ilimitado, ES + EN", t1_b: "Transcripcion local con Whisper", t1_c: "Limpieza inteligente sin conexion", t1_d: "Diccionario, snippets, historial", t1_e: "100% local, sin cuenta",
+    t2_t: "Pro", t2_per: "o $59/ano",
+    t2_a: "Modo reunion: transcripcion + resumen", t2_b: "Marca momentos clave con capturas", t2_c: "Pulido con IA, en tu maquina", t2_d: "Pulido en la nube opcional, bien etiquetado", t2_e: "Sigue siendo 100% local por defecto",
+    t3_tag: "LIMITADO EN LANZAMIENTO", t3_t: "Fundador", t3_per: "una vez, para siempre",
+    t3_a: "Todo lo de Pro, de por vida", t3_b: "Solo las primeras 500 licencias", t3_c: "Insignia de fundador en la app",
+    pr_fine: "Precios de lanzamiento, sujetos a cambio antes del estreno.",
+    h_title: "Por que \"Kwilua\"?",
+    h_p: "Del verbo nahuat (i)hkwilua, \"escribir\". El nahuat es la lengua del pueblo pipil de El Salvador, de donde es nuestro fundador. Una app que escribe cuando hablas, nombrada en la lengua de la tierra.",
+    foot: "Kwilua. Hecho para gente que piensa mas rapido de lo que escribe.",
+  }
+};
+const en = {};
+document.querySelectorAll("[data-i18n]").forEach(el => en[el.dataset.i18n] = el.innerHTML);
+let lang = "en";
+document.getElementById("langToggle").addEventListener("click", () => {
+  lang = lang === "en" ? "es" : "en";
+  const dict = lang === "es" ? i18n.es : en;
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    if (dict[el.dataset.i18n] !== undefined) el.innerHTML = dict[el.dataset.i18n];
+  });
+  document.getElementById("langToggle").textContent = lang === "en" ? "ES" : "EN";
+  document.documentElement.lang = lang;
+  typeTargets = phrases[lang];
+});
+
+// Typing demo in the hero pill.
+const phrases = {
+  en: ["Send the proposal to Maria before Thursday.", "Can you review the deck? Press enter.", "Nos vemos a las tres, gracias."],
+  es: ["Enviale la propuesta a Maria antes del jueves.", "Puedes revisar la presentacion?", "See you at three, thanks."]
+};
+let typeTargets = phrases.en;
+const typedEl = document.querySelector("#typedemo b");
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+if (reducedMotion) {
+  typedEl.textContent = typeTargets[0];
+} else {
+  // Original type-then-backspace cycle. The pill is fixed-size, so the
+  // churn no longer moves layout; rest at the full phrase before deleting.
+  let pi = 0, ci = 0, deleting = false;
+  const tick = () => {
+    const target = typeTargets[pi % typeTargets.length];
+    if (!deleting) {
+      ci++;
+      typedEl.textContent = target.slice(0, ci);
+      if (ci >= target.length) {
+        deleting = true;
+        setTimeout(tick, 2200);
+      } else {
+        setTimeout(tick, 55);
+      }
+    } else {
+      ci = Math.max(0, ci - 3);
+      typedEl.textContent = target.slice(0, ci);
+      if (ci === 0) {
+        deleting = false;
+        pi++;
+        setTimeout(tick, 450);
+      } else {
+        setTimeout(tick, 40);
+      }
+    }
+  };
+  tick();
+}
+</script>
+</body>
+</html>
